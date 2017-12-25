@@ -1,9 +1,10 @@
 package com.momo.tv.plugin;
 
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
-public class PluginActivity extends AppCompatActivity {
+import com.momo.tv.plugin.plugin.BasePluginActivity;
+
+public class PluginActivity extends BasePluginActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

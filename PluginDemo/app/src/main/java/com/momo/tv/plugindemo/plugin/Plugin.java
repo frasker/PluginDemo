@@ -19,8 +19,8 @@ import dalvik.system.PathClassLoader;
 
 public class Plugin {
     public static final String TAG = "Plugin";
-    public static final String PLUGIN_ACTIVITY ="plugin_activity";
-    public static final String PLUGIN_COMPONENT ="plugin_component";
+    public static final String PLUGIN_ACTIVITY = "plugin_activity";
+    public static final String PLUGIN_COMPONENT = "plugin_component";
 
     public static boolean init(Context context) {
 //        Environment.getDataDirectory() = /data
@@ -45,39 +45,39 @@ public class Plugin {
             reflectHandleActivityThread();
         } catch (Exception e) {
             e.printStackTrace();
-            Log.i(TAG, "plugin init: "+e.toString());
+            Log.i(TAG, "plugin init: " + e.toString());
             success = false;
         }
         return success;
     }
 
-    private static void reflectHandleActivityThread() throws Exception{
+    private static void reflectHandleActivityThread() throws Exception {
         Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
-        Method currentActivityThreadMethod=activityThreadClass.getDeclaredMethod("currentActivityThread");
+        Method currentActivityThreadMethod = activityThreadClass.getDeclaredMethod("currentActivityThread");
         currentActivityThreadMethod.setAccessible(true);
-        Object currentActivityThread=currentActivityThreadMethod.invoke(null);
+        Object currentActivityThread = currentActivityThreadMethod.invoke(null);
 
-        Field mHField=activityThreadClass.getDeclaredField("mH");
+        Field mHField = activityThreadClass.getDeclaredField("mH");
         mHField.setAccessible(true);
-        Object mH=mHField.get(currentActivityThread);
+        Object mH = mHField.get(currentActivityThread);
 
         Class<?> handlerClass = Class.forName("android.os.Handler");
-        Field mCallbackField=handlerClass.getDeclaredField("mCallback");
+        Field mCallbackField = handlerClass.getDeclaredField("mCallback");
         mCallbackField.setAccessible(true);
-        mCallbackField.set(mH,new PluginAcitivityThreadHandlerCallback());
+        mCallbackField.set(mH, new PluginAcitivityThreadHandlerCallback());
     }
 
-    private static void proxyActivityManager(Context context) throws Exception{
+    private static void proxyActivityManager(Context context) throws Exception {
         //gDefault 是一个 ActivityManagerNative的静态常量，是一个Singleton类
-        Object gDefault = getFieldObject(null,Class.forName("android.app.ActivityManagerNative"),"gDefault");
-        Field mInstanceField = getField(Class.forName("android.util.Singleton"),"mInstance");
+        Object gDefault = getFieldObject(null, Class.forName("android.app.ActivityManagerNative"), "gDefault");
+        Field mInstanceField = getField(Class.forName("android.util.Singleton"), "mInstance");
         //拿到
         Object activityManager = mInstanceField.get(gDefault);
 
-        Class<?> IActivityManager=Class.forName("android.app.IActivityManager");
-        IActivityManagerHandler handler= new IActivityManagerHandler(context,activityManager);
-        Object proxy= Proxy.newProxyInstance(context.getClassLoader(),new Class[]{IActivityManager},handler);
-        mInstanceField.set(gDefault,proxy);
+        Class<?> IActivityManager = Class.forName("android.app.IActivityManager");
+        IActivityManagerHandler handler = new IActivityManagerHandler(context, activityManager);
+        Object proxy = Proxy.newProxyInstance(context.getClassLoader(), new Class[]{IActivityManager}, handler);
+        mInstanceField.set(gDefault, proxy);
     }
 
     private static void handleDexElements(Context context) throws Exception {
@@ -94,39 +94,42 @@ public class Plugin {
         //获取插件的Elements数组
         Object[] pluginElements = getElementsFromClassLoader(pluginClassLoader);
         //将插件的Elements数组拼接到宿主的Elements数组上
-        Object[] newDexElements=concat(hosElements,pluginElements);
+        Object[] newDexElements = concat(hosElements, pluginElements);
         //将拼接的Elements设置到hostClassLoader内
-        reflectSetNewDexElements(hostClassLoader,newDexElements);
+        reflectSetNewDexElements(hostClassLoader, newDexElements);
+
+        Object[] ttElements = getElementsFromClassLoader(hostClassLoader);
+        Log.i(TAG, "handleDexElements: " + ttElements);
     }
 
     private static Object[] concat(Object[] src, Object[] dst) {
         int srcLength = src.length;
         int dstLength = dst.length;
-        src = Arrays.copyOf(src,srcLength + dstLength);
+        src = Arrays.copyOf(src, srcLength + dstLength);
         System.arraycopy(dst, 0, src, srcLength, dstLength);
         return src;
     }
 
 
-    private static void reflectSetNewDexElements(BaseDexClassLoader hostClassLoader, Object newDexElements) throws Exception{
-        Object pathList = getFieldObject(hostClassLoader,Class.forName("dalvik.system.BaseDexClassLoader"),"pathList");
-        Field dexElementsField = getField(pathList.getClass(),"dexElements");
-        dexElementsField.set(pathList,newDexElements);
+    private static void reflectSetNewDexElements(BaseDexClassLoader hostClassLoader, Object newDexElements) throws Exception {
+        Object pathList = getFieldObject(hostClassLoader, Class.forName("dalvik.system.BaseDexClassLoader"), "pathList");
+        Field dexElementsField = getField(pathList.getClass(), "dexElements");
+        dexElementsField.set(pathList, newDexElements);
     }
 
     private static Object[] getElementsFromClassLoader(BaseDexClassLoader classLoader) throws Exception {
-        Object pathList = getFieldObject(classLoader,Class.forName("dalvik.system.BaseDexClassLoader"),"pathList");
-        getFieldObject(pathList,pathList.getClass(),"dexElements");
-        return (Object[]) getFieldObject(pathList,pathList.getClass(),"dexElements");
+        Object pathList = getFieldObject(classLoader, Class.forName("dalvik.system.BaseDexClassLoader"), "pathList");
+        getFieldObject(pathList, pathList.getClass(), "dexElements");
+        return (Object[]) getFieldObject(pathList, pathList.getClass(), "dexElements");
     }
 
-    private static Object getFieldObject(Object obj,Class<?> clz,String fieldName) throws Exception{
+    private static Object getFieldObject(Object obj, Class<?> clz, String fieldName) throws Exception {
         Field field = clz.getDeclaredField(fieldName);
         field.setAccessible(true);
         return field.get(obj);
     }
 
-    private static Field getField(Class<?> clz,String fieldName) throws Exception{
+    private static Field getField(Class<?> clz, String fieldName) throws Exception {
         Field field = clz.getDeclaredField(fieldName);
         field.setAccessible(true);
         return field;

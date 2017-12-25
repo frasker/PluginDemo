@@ -31,7 +31,7 @@ public class PluginAcitivityThreadHandlerCallback implements Handler.Callback {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Log.i(TAG, "插件 mCallback 替换失败");
+                    Log.i(TAG, "插件 mCallback 替换失败 "+e.toString());
                 }
                 break;
         }
